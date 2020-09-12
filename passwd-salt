@@ -1,0 +1,104 @@
+#! /bin/bash
+
+usage() {
+cat << EOF
+usage: passswd-salt [options] salt origina_password
+ -s, --symbol
+   include special character in generated password
+ -c <s>, --special-characters <s>
+   include special character in generated password, <s> set available special
+   characters
+ -l <num>, --length <num>
+   set the length of generated password
+ -h, --help
+   display this message
+EOF
+}
+
+lowercase=abcdefghijklmnopqrstuvwxyz
+uppercase=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+numeric=0123456789
+special_symbol=\`\~\!\@\#\$\%\^\&\*\(\)\-\_\=\+\[\{\]\}\\\|\;\:\'\"\,\<\.\>\/\?
+
+
+salt=
+original_password=
+password=
+length=16
+character_type=3
+
+while [ $# -gt 0 ];do
+	case $1 in
+	-s|--symbol)
+		character_type=4
+		;;
+	-c|--special-characters)
+		shift
+		[ $# -eq 0 ] && {
+			echo error: missing argument of -c\|--special-characters
+			exit 1
+		}
+		character_type=4
+		special_symbol=$1
+		;;
+	-l|--length)
+		shift
+		[ $# -eq 0 ] && {
+			echo error: missing argument of -l\|--length
+			exit 1
+		}
+		length=$1
+		[[ "$length" =~ ^[1-9][0-9]*$ ]] || {
+			echo error: argument of -l\|--length must be a number greater than zero
+			exit 1
+		}
+		;;
+	-h|--help)
+		usage
+		exit 1
+		;;
+	*)
+		if [ -z "$salt" ]; then
+			salt=$([ -f $1 ] && (sha512sum $1 | awk '{print $1}') || echo $1)
+		elif [ -z "$original_password" ]; then
+			original_password=$1
+		else
+			echo error: unknow parameters $1
+			exit 1
+		fi
+		;;
+	esac
+	shift
+done
+
+[ -z "$salt" ] && {
+	echo error: missing salt
+	exit 1
+}
+
+[ -z "$original_password" ] && {
+	echo error: missing origina_password
+	exit 1
+}
+
+
+
+character_array=($lowercase $uppercase $numeric $special_symbol)
+
+hash=$(echo -n $original_password$length | openssl sha512 -r -hmac $salt | awk '{print $1}')
+
+while [ ${#hash} -lt $((3 * $length)) ]; do
+	hash=$hash$(echo $hash | sha512sum | awk '{print $1}')
+done
+
+for i in $(seq $length); do
+	t=${hash:$((($i - 1) * 3)):3}
+	n=$((0x${t:0:1}))
+	d=$((0x${t:1:2}))
+	s=${character_array[$(($n % $character_type))]}
+	password=$password${s:$(($d % ${#s})):1}
+done
+
+echo $password
+
+
