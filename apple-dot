@@ -1,0 +1,87 @@
+#! /bin/sh
+
+usage() {
+cat << EOF
+usage: apple-dot [name] [domain] [ip1[ip2[ip3...]]]
+EOF
+}
+
+generate_dot() {
+name=$1
+shift
+domain=$1
+shift
+cat << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>Name</key>
+			<string>$name DNS over TLS</string>
+			<key>PayloadDescription</key>
+			<string>Configures device to use $name DNS over TLS.</string>
+			<key>PayloadDisplayName</key>
+			<string>$name DoT</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.dnsSettings.managed.$(cat /proc/sys/kernel/random/uuid)</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>$(cat /proc/sys/kernel/random/uuid)</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>TLS</string>
+				<key>ServerName</key>
+				<string>$domain</string>
+				<key>ServerAddresses</key>
+				<array>
+EOF
+
+while [ $# -gt 0 ]; do
+cat << EOF
+					<string>$1</string>
+EOF
+shift
+done
+
+cat << EOF
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Adds $name DoT to Big Sur and iOS 14 or newer systems</string>
+	<key>PayloadDisplayName</key>
+	<string>$name DoT</string>
+	<key>PayloadIdentifier</key>
+	<string>$(cat /proc/sys/kernel/random/uuid)</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>$(cat /proc/sys/kernel/random/uuid)</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
+EOF
+}
+
+if [ $# -lt 4 ]; then
+	usage
+	exit 1
+fi
+
+generate_dot $*
+
+
+
+
+
