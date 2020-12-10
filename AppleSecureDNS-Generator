@@ -1,0 +1,129 @@
+#! /bin/zsh
+
+uuidgen() {
+	cat /proc/sys/kernel/random/uuid
+}
+
+generate_head() {
+	cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+EOF
+}
+
+generate_tail() {
+	cat <<EOF
+	</array>
+	<key>PayloadDescription</key>
+	<string>Adds Secure DNS to Big Sur and iOS 14 or newer systems</string>
+	<key>PayloadDisplayName</key>
+	<string>Secure DNS</string>
+	<key>PayloadIdentifier</key>
+	<string>$(uuidgen)</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>$(uuidgen)</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
+EOF
+}
+
+generate_doh() {
+	protocol=$(echo $*|awk -F, '{print $1}')
+	url=$(echo $*|awk -F, '{print $2}')
+	name=$(echo $*|awk -F, '{print $3}')
+	case $protocol in
+	https | HTTPS) ;;
+	*)
+		return
+		;;
+	esac
+
+	cat <<EOF
+		<dict>
+			<key>Name</key>
+			<string>$name</string>
+			<key>PayloadDescription</key>
+			<string>Configures device to use $name.</string>
+			<key>PayloadDisplayName</key>
+			<string>$name</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.dnsSettings.managed.$(cat /proc/sys/kernel/random/uuid)</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>$(uuidgen)</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>HTTPS</string>
+				<key>ServerURL</key>
+				<string>$url</string>
+			</dict>
+		</dict>
+EOF
+}
+
+generate_dot() {
+	protocol=$(echo $*|awk -F, '{print $1}')
+	domain=$(echo $*|awk -F, '{print $2}')
+	name=$(echo $*|awk -F, '{print $3}')
+	case $protocol in
+	tls | TLS) ;;
+	*)
+		return
+		;;
+	esac
+
+	cat <<EOF
+		<dict>
+			<key>Name</key>
+			<string>$name</string>
+			<key>PayloadDescription</key>
+			<string>Configures device to use $name.</string>
+			<key>PayloadDisplayName</key>
+			<string>$name</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.dnsSettings.managed.$(uuidgen)</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>$(uuidgen)</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>TLS</string>
+				<key>ServerName</key>
+				<string>$domain</string>
+			</dict>
+		</dict>
+EOF
+}
+
+generate() {
+	generate_dot $*
+	generate_doh $*
+}
+
+main() {
+	generate_head
+	while read line; do
+		generate $line
+	done < .AppleSecureDNS-Generator.config
+	generate_tail
+}
+
+main
