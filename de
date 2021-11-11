@@ -1,0 +1,32 @@
+#! /bin/sh
+
+[ $# -ne 2 ] && exit 1
+[ !  -f $1 ] && exit 2
+[ !  -f $2 ] && [ ! -d $2 ] && exit 3
+
+k=$1
+f=$2
+
+kk() {
+  local n=$(basename ${f})
+  openssl sha256 -hmac ${n%.7z} ${k} | awk '{print $NF}'
+}
+
+encrypt() {
+  7z a -p$(kk) -mhe $(basename ${f}).7z ${f} > /dev/null
+}
+
+decrypt() {
+  7z x -p$(kk) -y ${f} > /dev/null
+}
+
+kk
+
+case $f in
+  *.7z)
+    decrypt
+    ;;
+  *)
+   encrypt
+   ;;
+esac
