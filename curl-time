@@ -1,0 +1,23 @@
+#! /bin/sh
+
+cat << EOF > /tmp/curl_time.txt
+----------\n
+http: %{http_code}\n
+dns: %{time_namelookup}s\n
+redirect: %{time_redirect}s\n
+time_connect: %{time_connect}s\n
+time_appconnect: %{time_appconnect}s\n
+time_pretransfer: %{time_pretransfer}s\n
+time_starttransfer: %{time_starttransfer}s\n
+size_download: %{size_download}bytes\n
+speed_download: %{speed_download}B/s\n
+----------\n
+time_total: %{time_total}s\n
+\n
+EOF
+
+while [ $# -gt 0 ]; do
+	echo $1
+	curl -s -o /dev/null -w "@/tmp/curl_time.txt" $1
+	shift
+done
