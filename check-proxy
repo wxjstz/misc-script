@@ -1,0 +1,33 @@
+#! /bin/sh
+
+cat << EOF > /tmp/curl_time.txt
+----------\n
+http: %{http_code}\n
+dns: %{time_namelookup}s\n
+redirect: %{time_redirect}s\n
+time_connect: %{time_connect}s\n
+time_appconnect: %{time_appconnect}s\n
+time_pretransfer: %{time_pretransfer}s\n
+time_starttransfer: %{time_starttransfer}s\n
+size_download: %{size_download}bytes\n
+speed_download: %{speed_download}B/s\n
+----------\n
+time_total: %{time_total}s\n
+\n
+EOF
+
+[ $# -eq 0 ] && {
+	$0 http://127.0.0.1:7890
+	$0 socks5h://127.0.0.1:7890
+	$0 socks5h://127.0.0.1:9050
+	exit 0
+}
+
+while [ $# -gt 0 ]; do
+	proxy=$1
+	url="https://www.youtube.com"
+	echo The delay information of accessing "$url" through $proxy
+	curl --proxy $proxy -s -o /dev/null -w "@/tmp/curl_time.txt" "$url?$(date +%s)"
+	shift
+done
+
